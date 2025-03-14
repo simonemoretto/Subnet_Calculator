@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subnet Calculator | Soft UI</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="stili.css">
+</head>
+<body>
+  <div class="container">
+    <h1><i class="fas fa-network-wired"></i> Subnet Calculator</h1>
+    
+    <div class="form">
+      <div class="input-group">
+        <label for="networkAddress"><i class="fas fa-globe"></i> Indirizzo di rete (Classe A, B o C):</label>
+        <input type="text" id="networkAddress" placeholder="Es: 192.168.0.0">
+      </div>
+      
+      <div class="input-group">
+        <label for="subnetCount"><i class="fas fa-project-diagram"></i> Numero di sottoreti:</label>
+        <input type="number" id="subnetCount" min="1" placeholder="Es: 4">
+      </div>
+      
+      <button id="calculate" class="btn">
+        <i class="fas fa-calculator"></i> Calcola Subnet
+      </button>
+    </div>
+    
+    <div id="resultContainer" class="table-container hidden">
+      <table id="resultTable" class="styled-table">
+        <thead>
+          <tr>
+            <th><i class="fas fa-sitemap"></i> Sottorete</th>
+            <th><i class="fas fa-network-wired"></i> Indirizzo sottorete</th>
+            <th><i class="fas fa-laptop"></i> Primo host</th>
+            <th><i class="fas fa-desktop"></i> Ultimo host</th>
+            <th><i class="fas fa-server"></i> Gateway</th>
+            <th><i class="fas fa-broadcast-tower"></i> Broadcast</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Bottoni di esportazione -->
+    <div class="export-buttons hidden" id="exportButtons">
+      <button id="exportExcel" class="btn btn-export btn-excel">
+        <i class="fas fa-file-excel"></i> Esporta su Excel
+      </button>
+      <button id="exportWord" class="btn btn-export btn-word">
+        <i class="fas fa-file-word"></i> Esporta su Word
+      </button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    Realizzato da: Moretto Simone e Patrick Colucci
+  </footer>
+
+  <!-- Contenitore per le notifiche -->
+  <div id="notification" class="notification"></div>
+
+  <script src="calcolo.js"></script>
+</body>
+</html>

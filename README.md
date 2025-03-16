@@ -2,4 +2,4 @@
 
 Calcolatore di subnet dati indirizzi di rete di classe A,B,C.
 
-[Subnet_Calculator](https://github.com/simonemoretto/Subnet_Calculator)
+[Subnet_Calculator](https://simonemoretto.github.io/Subnet_Calculator/)

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subnet Calculator | Soft UI</title>
+  <title>Subnet Calculator | Design Moderno</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="stili.css">
@@ -14,18 +14,49 @@
     
     <div class="form">
       <div class="input-group">
-        <label for="networkAddress"><i class="fas fa-globe"></i> Indirizzo di rete (Classe A, B o C):</label>
+        <label for="networkAddress">
+          <i class="fas fa-globe"></i> Indirizzo di rete (Classe A, B o C):
+          <span class="info-button" id="networkInfoBtn"><i class="fas fa-info"></i></span>
+        </label>
         <input type="text" id="networkAddress" placeholder="Es: 192.168.0.0">
       </div>
       
       <div class="input-group">
-        <label for="subnetCount"><i class="fas fa-project-diagram"></i> Numero di sottoreti:</label>
+        <label for="subnetCount">
+          <i class="fas fa-project-diagram"></i> Numero di sottoreti:
+          <span class="info-button" id="subnetInfoBtn"><i class="fas fa-info"></i></span>
+        </label>
         <input type="number" id="subnetCount" min="1" placeholder="Es: 4">
       </div>
       
       <button id="calculate" class="btn">
         <i class="fas fa-calculator"></i> Calcola Subnet
       </button>
+    </div>
+    
+    <!-- Riepilogo dell'indirizzo di rete -->
+    <div id="networkSummary" class="network-summary hidden">
+      <h3><i class="fas fa-info-circle"></i> Riepilogo della rete</h3>
+      <div class="network-summary-item">
+        <div class="network-summary-label">Classe di rete:</div>
+        <div class="network-summary-value"><span id="networkClass"></span></div>
+      </div>
+      <div class="network-summary-item">
+        <div class="network-summary-label">Bit per rete predefiniti:</div>
+        <div class="network-summary-value"><span id="defaultNetworkBits"></span></div>
+      </div>
+      <div class="network-summary-item">
+        <div class="network-summary-label">Bit utilizzati per sottoreti:</div>
+        <div class="network-summary-value"><span id="subnetBits"></span></div>
+      </div>
+      <div class="network-summary-item">
+        <div class="network-summary-label">Nuovo prefisso di rete:</div>
+        <div class="network-summary-value"><span id="newPrefix"></span></div>
+      </div>
+      <div class="network-summary-item">
+        <div class="network-summary-label">Host disponibili per sottorete:</div>
+        <div class="network-summary-value"><span id="hostsPerSubnet"></span></div>
+      </div>
     </div>
     
     <div id="resultContainer" class="table-container hidden">
@@ -57,11 +88,89 @@
 
   <!-- Footer -->
   <footer class="footer">
-    Realizzato da: Moretto Simone e Patrick Colucci
+    Realizzato da: <span>Moretto Simone</span> e <span>Patrick Colucci</span>
   </footer>
 
   <!-- Contenitore per le notifiche -->
   <div id="notification" class="notification"></div>
+  
+  <!-- Overlay per i popup -->
+  <div id="overlay" class="overlay"></div>
+  
+  <!-- Popup informativo per l'indirizzo di rete -->
+  <div id="networkInfoPopup" class="info-popup">
+    <div class="info-popup-header">
+      <div class="info-popup-title"><i class="fas fa-globe"></i> Indirizzo di rete</div>
+      <button class="info-popup-close"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="info-popup-content">
+      <p>L'indirizzo di rete è l'indirizzo che identifica una rete IP. Deve essere un indirizzo valido per una delle seguenti classi:</p>
+      
+      <h3><span class="network-class-badge class-a">Classe A</span></h3>
+      <p>Gli indirizzi di Classe A hanno il primo ottetto compreso tra 1 e 126.</p>
+      <ul>
+        <li>Formato: <code>N.H.H.H</code> dove N è l'ottetto di rete e H sono gli ottetti di host</li>
+        <li>Esempi validi: 10.0.0.0, 20.0.0.0, 126.0.0.0</li>
+        <li>Maschera predefinita: 255.0.0.0 o /8</li>
+        <li>Bit per rete: 8 bit, Bit per host: 24 bit</li>
+      </ul>
+      
+      <h3><span class="network-class-badge class-b">Classe B</span></h3>
+      <p>Gli indirizzi di Classe B hanno il primo ottetto compreso tra 128 e 191.</p>
+      <ul>
+        <li>Formato: <code>N.N.H.H</code> dove N sono gli ottetti di rete e H sono gli ottetti di host</li>
+        <li>Esempi validi: 172.16.0.0, 182.0.0.0, 191.255.0.0</li>
+        <li>Maschera predefinita: 255.255.0.0 o /16</li>
+        <li>Bit per rete: 16 bit, Bit per host: 16 bit</li>
+      </ul>
+      
+      <h3><span class="network-class-badge class-c">Classe C</span></h3>
+      <p>Gli indirizzi di Classe C hanno il primo ottetto compreso tra 192 e 223.</p>
+      <ul>
+        <li>Formato: <code>N.N.N.H</code> dove N sono gli ottetti di rete e H è l'ottetto di host</li>
+        <li>Esempi validi: 192.168.0.0, 200.10.0.0, 223.255.255.0</li>
+        <li>Maschera predefinita: 255.255.255.0 o /24</li>
+        <li>Bit per rete: 24 bit, Bit per host: 8 bit</li>
+      </ul>
+    </div>
+    <div class="info-popup-footer">
+      <button class="btn">Capito!</button>
+    </div>
+  </div>
+  
+  <!-- Popup informativo per le sottoreti -->
+  <div id="subnetInfoPopup" class="info-popup">
+    <div class="info-popup-header">
+      <div class="info-popup-title"><i class="fas fa-project-diagram"></i> Subnetting</div>
+      <button class="info-popup-close"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="info-popup-content">
+      <p>Il subnetting consiste nel dividere una rete IP in più sottoreti utilizzando bit aggiuntivi dalla porzione dell'host.</p>
+      
+      <h3>Come funziona il subnetting:</h3>
+      <p>Quando si divide una rete in sottoreti, si prendono in prestito bit dalla porzione dell'host e si assegnano alla porzione di rete. Il numero di bit presi in prestito determina il numero di sottoreti che è possibile creare.</p>
+      
+      <h3>Formula per il numero di sottoreti:</h3>
+      <p>Numero di sottoreti = 2<sup>n</sup>, dove n è il numero di bit presi in prestito.</p>
+      
+      <h3>Esempio:</h3>
+      <p>Per una rete di Classe C (192.168.1.0/24), se prendiamo in prestito 2 bit:</p>
+      <ul>
+        <li>Sottoreti possibili: 2<sup>2</sup> = 4 sottoreti</li>
+        <li>La nuova maschera diventa: /26 (24 + 2)</li>
+        <li>Host per sottorete: 2<sup>6</sup> - 2 = 62 (6 bit rimasti per gli host, meno 2 indirizzi riservati)</li>
+      </ul>
+      
+      <p>Nota: Per ogni sottorete, 2 indirizzi sono sempre riservati:</p>
+      <ul>
+        <li>Il primo indirizzo è l'indirizzo di rete</li>
+        <li>L'ultimo indirizzo è l'indirizzo di broadcast</li>
+      </ul>
+    </div>
+    <div class="info-popup-footer">
+      <button class="btn">Capito!</button>
+    </div>
+  </div>
 
   <script src="calcolo.js"></script>
 </body>

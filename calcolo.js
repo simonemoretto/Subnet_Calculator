@@ -7,6 +7,15 @@ document.addEventListener('DOMContentLoaded', function() {
   const table = document.getElementById("resultTable");
   const tbody = table.querySelector("tbody");
   const notificationElement = document.getElementById("notification");
+  
+  // Elementi del riepilogo rete
+  const networkClassElement = document.getElementById("networkClass");
+  const defaultNetworkBitsElement = document.getElementById("defaultNetworkBits");
+  const subnetBitsElement = document.getElementById("subnetBits");
+  const newPrefixElement = document.getElementById("newPrefix");
+  const hostsPerSubnetElement = document.getElementById("hostsPerSubnet");
+  const networkSummaryElement = document.getElementById("networkSummary");
+  const exportButtons = document.getElementById("exportButtons");
 
   // Aggiungi effetto di focus alle label
   document.querySelectorAll('.input-group input').forEach(input => {
@@ -91,6 +100,8 @@ document.addEventListener('DOMContentLoaded', function() {
   function calculateSubnets() {
     // Pulisci risultati precedenti
     tbody.innerHTML = '';
+    networkSummaryElement.classList.remove("visible");
+    networkSummaryElement.classList.add("hidden");
 
     const networkAddress = networkAddressInput.value.trim();
     const subnetCount = parseInt(subnetCountInput.value.trim());
@@ -107,12 +118,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Determina la classe e la maschera predefinita
     const firstOctet = parseInt(networkAddress.split('.')[0], 10);
-    let defaultMask;
+    let defaultMask, networkClass;
+    
     if(firstOctet >= 1 && firstOctet <= 126) {
+      networkClass = "Classe A";
       defaultMask = 8;
     } else if(firstOctet >= 128 && firstOctet <= 191) {
+      networkClass = "Classe B";
       defaultMask = 16;
     } else if(firstOctet >= 192 && firstOctet <= 223) {
+      networkClass = "Classe C";
       defaultMask = 24;
     } else {
       showNotification("Classe di indirizzo non supportata.", "error");
@@ -127,55 +142,42 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
+    // Aggiorna il riepilogo della rete
+    networkClassElement.textContent = networkClass;
+    defaultNetworkBitsElement.textContent = defaultMask;
+    subnetBitsElement.textContent = bitsNeeded;
+    newPrefixElement.textContent = newPrefix;
+    hostsPerSubnetElement.textContent = (2 ** (32 - newPrefix) - 2);
+    networkSummaryElement.classList.remove("hidden");
+    networkSummaryElement.classList.add("visible");
+
+    // Calcola le sottoreti
     const blockSize = Math.pow(2, 32 - newPrefix);
     const baseAddressInt = ipToInt(networkAddress);
 
-    // Calcola le sottoreti richieste
     for(let i = 0; i < subnetCount; i++) {
       const subnetAddressInt = baseAddressInt + (i * blockSize);
       const broadcastInt = subnetAddressInt + blockSize - 1;
       const firstHostInt = subnetAddressInt + 1;
       const lastHostInt = broadcastInt - 1;
-      // Imposta il gateway come il secondo indirizzo, se disponibile
       const gatewayInt = (blockSize >= 4) ? subnetAddressInt + 2 : firstHostInt;
 
-      // Crea una nuova riga per la tabella
       const row = document.createElement("tr");
-
-      const subnetCell = document.createElement("td");
-      subnetCell.textContent = "Subnet " + (i + 1);
-
-      const subnetAddressCell = document.createElement("td");
-      subnetAddressCell.textContent = intToIp(subnetAddressInt) + " /" + newPrefix;
-
-      const firstHostCell = document.createElement("td");
-      firstHostCell.textContent = intToIp(firstHostInt);
-
-      const lastHostCell = document.createElement("td");
-      lastHostCell.textContent = intToIp(lastHostInt);
-
-      const gatewayCell = document.createElement("td");
-      gatewayCell.textContent = intToIp(gatewayInt);
-
-      const broadcastCell = document.createElement("td");
-      broadcastCell.textContent = intToIp(broadcastInt);
-
-      row.appendChild(subnetCell);
-      row.appendChild(subnetAddressCell);
-      row.appendChild(firstHostCell);
-      row.appendChild(lastHostCell);
-      row.appendChild(gatewayCell);
-      row.appendChild(broadcastCell);
-
+      row.innerHTML = `
+        <td>Subnet ${i + 1}</td>
+        <td>${intToIp(subnetAddressInt)}/${newPrefix}</td>
+        <td>${intToIp(firstHostInt)}</td>
+        <td>${intToIp(lastHostInt)}</td>
+        <td>${intToIp(gatewayInt)}</td>
+        <td>${intToIp(broadcastInt)}</td>
+      `;
       tbody.appendChild(row);
     }
 
-    // Rendi visibile il container dei risultati
+    // Mostra risultati ed esportazione
     resultContainer.classList.remove("hidden");
     resultContainer.classList.add("visible");
-
-    // Rendi visibili anche i bottoni di esportazione
-    const exportButtons = document.getElementById("exportButtons");
+    
     if(exportButtons) {
       exportButtons.classList.remove("hidden");
       exportButtons.classList.add("visible");
@@ -184,52 +186,45 @@ document.addEventListener('DOMContentLoaded', function() {
     showNotification("Subnet calcolate con successo!", "success");
   }
 
-  // Funzione per esportare in Excel
+  // Funzioni di esportazione
   function exportToExcel() {
-    let tableHTML = document.getElementById("resultTable").outerHTML;
-    let filename = "subnets.xls";
-    let blob = new Blob(
-      ['<html><head><meta charset="UTF-8"></head><body>', tableHTML, '</body></html>'],
+    const tableHTML = table.outerHTML;
+    const blob = new Blob(
+      [`<html><head><meta charset="UTF-8"></head><body>${tableHTML}</body></html>`],
       { type: 'application/vnd.ms-excel' }
     );
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.download = "subnets.xls";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     showNotification("Esportazione su Excel completata!", "success");
   }
 
-  // Funzione per esportare in Word
   function exportToWord() {
-    let tableHTML = document.getElementById("resultTable").outerHTML;
-    let filename = "subnets.doc";
-    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
-               'xmlns:w="urn:schemas-microsoft-com:office:word" ' +
-               'xmlns="http://www.w3.org/TR/REC-html40">' +
-               '<head><meta charset="UTF-8"><title>Export Subnets</title></head><body>' +
-               tableHTML + '</body></html>';
-    let blob = new Blob([html], { type: 'application/msword' });
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement("a");
+    const tableHTML = table.outerHTML;
+    const html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+            xmlns:w="urn:schemas-microsoft-com:office:word" 
+            xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="UTF-8"></head>
+        <body>${tableHTML}</body>
+      </html>
+    `;
+    const blob = new Blob([html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.download = "subnets.doc";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     showNotification("Esportazione su Word completata!", "success");
   }
 
-  // Registra gli event listener per i bottoni di esportazione
-  const exportExcelBtn = document.getElementById("exportExcel");
-  const exportWordBtn = document.getElementById("exportWord");
-
-  if(exportExcelBtn) {
-    exportExcelBtn.addEventListener("click", exportToExcel);
-  }
-  if(exportWordBtn) {
-    exportWordBtn.addEventListener("click", exportToWord);
-  }
+  // Event listener per esportazione
+  document.getElementById("exportExcel")?.addEventListener("click", exportToExcel);
+  document.getElementById("exportWord")?.addEventListener("click", exportToWord);
 });

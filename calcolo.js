@@ -7,15 +7,13 @@ document.addEventListener('DOMContentLoaded', function() {
   const table = document.getElementById("resultTable");
   const tbody = table.querySelector("tbody");
   const notificationElement = document.getElementById("notification");
-  
-  // Elementi del riepilogo rete
-  const networkClassElement = document.getElementById("networkClass");
-  const defaultNetworkBitsElement = document.getElementById("defaultNetworkBits");
-  const subnetBitsElement = document.getElementById("subnetBits");
-  const newPrefixElement = document.getElementById("newPrefix");
-  const hostsPerSubnetElement = document.getElementById("hostsPerSubnet");
-  const networkSummaryElement = document.getElementById("networkSummary");
+  const networkSummary = document.getElementById("networkSummary");
   const exportButtons = document.getElementById("exportButtons");
+  const networkInfoBtn = document.getElementById("networkInfoBtn");
+  const subnetInfoBtn = document.getElementById("subnetInfoBtn");
+  const networkInfoPopup = document.getElementById("networkInfoPopup");
+  const subnetInfoPopup = document.getElementById("subnetInfoPopup");
+  const overlay = document.getElementById("overlay");
 
   // Aggiungi effetto di focus alle label
   document.querySelectorAll('.input-group input').forEach(input => {
@@ -63,6 +61,37 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Configurazione dei popup informativi
+  networkInfoBtn.addEventListener("click", function() {
+    showPopup(networkInfoPopup);
+  });
+
+  subnetInfoBtn.addEventListener("click", function() {
+    showPopup(subnetInfoPopup);
+  });
+
+  document.querySelectorAll('.info-popup-close, .info-popup-footer .btn').forEach(btn => {
+    btn.addEventListener("click", function() {
+      closePopup(this.closest('.info-popup'));
+    });
+  });
+
+  overlay.addEventListener("click", function() {
+    document.querySelectorAll('.info-popup.visible').forEach(popup => {
+      closePopup(popup);
+    });
+  });
+
+  function showPopup(popup) {
+    popup.classList.add('visible');
+    overlay.classList.add('visible');
+  }
+
+  function closePopup(popup) {
+    popup.classList.remove('visible');
+    overlay.classList.remove('visible');
+  }
+
   // Funzione per mostrare notifiche
   function showNotification(message, type = 'success') {
     notificationElement.textContent = message;
@@ -100,8 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
   function calculateSubnets() {
     // Pulisci risultati precedenti
     tbody.innerHTML = '';
-    networkSummaryElement.classList.remove("visible");
-    networkSummaryElement.classList.add("hidden");
 
     const networkAddress = networkAddressInput.value.trim();
     const subnetCount = parseInt(subnetCountInput.value.trim());
@@ -118,17 +145,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Determina la classe e la maschera predefinita
     const firstOctet = parseInt(networkAddress.split('.')[0], 10);
-    let defaultMask, networkClass;
+    let defaultMask;
+    let networkClass;
     
     if(firstOctet >= 1 && firstOctet <= 126) {
-      networkClass = "Classe A";
       defaultMask = 8;
+      networkClass = "A";
     } else if(firstOctet >= 128 && firstOctet <= 191) {
-      networkClass = "Classe B";
       defaultMask = 16;
+      networkClass = "B";
     } else if(firstOctet >= 192 && firstOctet <= 223) {
-      networkClass = "Classe C";
       defaultMask = 24;
+      networkClass = "C";
     } else {
       showNotification("Classe di indirizzo non supportata.", "error");
       return;
@@ -137,94 +165,81 @@ document.addEventListener('DOMContentLoaded', function() {
     // Calcola il numero di bit necessari per le sottoreti e il nuovo prefisso
     const bitsNeeded = Math.ceil(Math.log2(subnetCount));
     const newPrefix = defaultMask + bitsNeeded;
+    
     if(newPrefix > 30) {
       showNotification("Numero di sottoreti troppo elevato per la rete data.", "error");
       return;
     }
 
-    // Aggiorna il riepilogo della rete
-    networkClassElement.textContent = networkClass;
-    defaultNetworkBitsElement.textContent = defaultMask;
-    subnetBitsElement.textContent = bitsNeeded;
-    newPrefixElement.textContent = newPrefix;
-    hostsPerSubnetElement.textContent = (2 ** (32 - newPrefix) - 2);
-    networkSummaryElement.classList.remove("hidden");
-    networkSummaryElement.classList.add("visible");
-
-    // Calcola le sottoreti
+    // Calcola il blockSize in base al nuovo prefisso
     const blockSize = Math.pow(2, 32 - newPrefix);
-    const baseAddressInt = ipToInt(networkAddress);
+    
+    // Calcola la network mask che corrisponde al nuovo prefisso
+    const networkMask = (0xFFFFFFFF << (32 - newPrefix)) >>> 0;
+    
+    // Converti l'indirizzo di rete in intero e applica la maschera di rete
+    const baseAddressInt = ipToInt(networkAddress) & networkMask;
+    
+    // Aggiorna il riepilogo della rete
+    document.getElementById("networkClass").textContent = `Classe ${networkClass}`;
+    document.getElementById("defaultNetworkBits").textContent = `/${defaultMask}`;
+    document.getElementById("subnetBits").textContent = `${bitsNeeded} bit`;
+    document.getElementById("newPrefix").textContent = `/${newPrefix}`;
+    document.getElementById("hostsPerSubnet").textContent = `${blockSize - 2} host`;
+    
+    // Mostra il riepilogo della rete
+    networkSummary.classList.remove("hidden");
+    networkSummary.classList.add("visible");
 
+    // Calcola le sottoreti richieste
     for(let i = 0; i < subnetCount; i++) {
       const subnetAddressInt = baseAddressInt + (i * blockSize);
       const broadcastInt = subnetAddressInt + blockSize - 1;
-      const firstHostInt = subnetAddressInt + 1;
+	  const gatewayInt = subnetAddressInt + 1; 
+      const firstHostInt = gatewayInt + 1;
       const lastHostInt = broadcastInt - 1;
-      const gatewayInt = (blockSize >= 4) ? subnetAddressInt + 2 : firstHostInt;
-
+      
+      
+      const subnetAddress = intToIp(subnetAddressInt);
+      const broadcast = intToIp(broadcastInt);
+      const firstHost = intToIp(firstHostInt);
+      const lastHost = intToIp(lastHostInt);
+      const gateway = intToIp(gatewayInt);
+      
+      // Crea una nuova riga nella tabella
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>Subnet ${i + 1}</td>
-        <td>${intToIp(subnetAddressInt)}/${newPrefix}</td>
-        <td>${intToIp(firstHostInt)}</td>
-        <td>${intToIp(lastHostInt)}</td>
-        <td>${intToIp(gatewayInt)}</td>
-        <td>${intToIp(broadcastInt)}</td>
+        <td>${i + 1}</td>
+        <td>${subnetAddress}</td>
+        <td>${firstHost}</td>
+        <td>${lastHost}</td>
+        <td>${gateway}</td>
+        <td>${broadcast}</td>
       `;
+      
       tbody.appendChild(row);
     }
-
-    // Mostra risultati ed esportazione
+    
+    // Mostra la tabella dei risultati
     resultContainer.classList.remove("hidden");
     resultContainer.classList.add("visible");
     
-    if(exportButtons) {
-      exportButtons.classList.remove("hidden");
-      exportButtons.classList.add("visible");
-    }
+    // Mostra i bottoni di esportazione
+    exportButtons.classList.remove("hidden");
+    exportButtons.classList.add("visible");
 
-    showNotification("Subnet calcolate con successo!", "success");
+    showNotification("Subnetting completato con successo!", "success");
   }
 
-  // Funzioni di esportazione
-  function exportToExcel() {
-    const tableHTML = table.outerHTML;
-    const blob = new Blob(
-      [`<html><head><meta charset="UTF-8"></head><body>${tableHTML}</body></html>`],
-      { type: 'application/vnd.ms-excel' }
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "subnets.xls";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showNotification("Esportazione su Excel completata!", "success");
-  }
+  // Gestisci l'esportazione su Excel
+  document.getElementById("exportExcel").addEventListener("click", function() {
+    // Qui potrai implementare l'esportazione su Excel
+    showNotification("Funzionalità di esportazione Excel in sviluppo", "info");
+  });
 
-  function exportToWord() {
-    const tableHTML = table.outerHTML;
-    const html = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" 
-            xmlns:w="urn:schemas-microsoft-com:office:word" 
-            xmlns="http://www.w3.org/TR/REC-html40">
-        <head><meta charset="UTF-8"></head>
-        <body>${tableHTML}</body>
-      </html>
-    `;
-    const blob = new Blob([html], { type: 'application/msword' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "subnets.doc";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showNotification("Esportazione su Word completata!", "success");
-  }
-
-  // Event listener per esportazione
-  document.getElementById("exportExcel")?.addEventListener("click", exportToExcel);
-  document.getElementById("exportWord")?.addEventListener("click", exportToWord);
+  // Gestisci l'esportazione su Word
+  document.getElementById("exportWord").addEventListener("click", function() {
+    // Qui potrai implementare l'esportazione su Word
+    showNotification("Funzionalità di esportazione Word in sviluppo", "info");
+  });
 });

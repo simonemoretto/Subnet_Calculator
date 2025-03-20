@@ -232,14 +232,26 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Gestisci l'esportazione su Excel
-  document.getElementById("exportExcel").addEventListener("click", function() {
-    // Qui potrai implementare l'esportazione su Excel
-    showNotification("Funzionalità di esportazione Excel in sviluppo", "info");
-  });
+document.getElementById("exportExcel").addEventListener("click", function() {
+  let table = document.getElementById("resultTable");
+  let wb = XLSX.utils.book_new();
+  let ws = XLSX.utils.table_to_sheet(table);
+  XLSX.utils.book_append_sheet(wb, ws, "Subnets");
+  XLSX.writeFile(wb, "subnet_results.xlsx");
+  showNotification("Esportazione Excel completata!", "success");
+});
 
-  // Gestisci l'esportazione su Word
-  document.getElementById("exportWord").addEventListener("click", function() {
-    // Qui potrai implementare l'esportazione su Word
-    showNotification("Funzionalità di esportazione Word in sviluppo", "info");
-  });
+// Gestisci l'esportazione su Word
+document.getElementById("exportWord").addEventListener("click", function() {
+  let table = document.getElementById("resultTable");
+  let html = table.outerHTML;
+  let blob = new Blob([html], { type: "application/msword" });
+  let link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "subnet_results.doc";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showNotification("Esportazione Word completata!", "success");
+});
 });
